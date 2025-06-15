@@ -1,273 +1,285 @@
-// EnhancedCarRentalSystem.java
-// Demonstrates dynamic data structures, data hiding, encapsulation, authentication,
-// loan request/transfer, account management, input validation, and proper resource cleanup
-
 import java.util.*;
-import java.io.*;
-import java.util.logging.*;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
-// ===== Core Domain Classes =====
+// ---------------- Vehicle Base Class ----------------
+abstract class Vehicle {
+    protected String vehicleID;
+    protected String type;
+    protected int seats;
+    protected double costPerDay;
+    protected boolean available;
 
-abstract class Vehicle implements Serializable {
-    private static final long serialVersionUID = 1L;
-    private String id;
-    private String make;
-    private String model;
-    private boolean available = true;
-    protected double basePricePerDay;
-
-    public Vehicle(String id, String make, String model, double basePricePerDay) {
-        this.id = id;
-        this.make = make;
-        this.model = model;
-        this.basePricePerDay = basePricePerDay;
+    public Vehicle(String id, String t, int s, double cost) {
+        this.vehicleID = id;
+        this.type = t;
+        this.seats = s;
+        this.costPerDay = cost;
+        this.available = true;
     }
 
-    public String getId() { return id; }
-    public String getMake() { return make; }
-    public String getModel() { return model; }
-    public boolean isAvailable() { return available; }
-    public void rentOut() { available = false; }
-    public void returned() { available = true; }
+    public abstract void display();
 
-    // Polymorphic pricing
-    public abstract double calculatePrice(int days);
+    public boolean isAvailable() {
+        return available;
+    }
 
-    public double getBasePricePerDay() { return basePricePerDay; }
+    public void setAvailability(boolean status) {
+        this.available = status;
+    }
 
-    @Override
-    public String toString() {
-        return String.format("[%s] %s %s - ₹%.2f/day (%s)",
-                id, make, model, basePricePerDay, available ? "Available" : "Rented");
+    public double calculateCost(int days) {
+        return costPerDay * days;
+    }
+
+    public String getID() {
+        return vehicleID;
+    }
+
+    public String getType() {
+        return type;
     }
 }
 
+// ---------------- Derived Vehicle Classes ----------------
 class Car extends Vehicle {
-    private static final long serialVersionUID = 1L;
-    private int seatingCapacity;
-    
-    public Car(String id, String make, String model, double basePricePerDay, int seats) { 
-        super(id, make, model, basePricePerDay); 
-        this.seatingCapacity = seats; 
+    public Car(String id, int s, double cost) {
+        super(id, "Car", s, cost);
     }
-    
-    public int getSeatingCapacity() {
-        return seatingCapacity;
-    }
-    
-    @Override 
-    public double calculatePrice(int days) { 
-        // Apply small discount for cars with more seats
-        double seatFactor = 1.0 - (seatingCapacity > 4 ? 0.05 : 0);
-        return days * getBasePricePerDay() * seatFactor; 
-    }
-    
-    @Override
-    public String toString() {
-        return super.toString() + String.format(" - %d seats", seatingCapacity);
+
+    public void display() {
+        System.out.println("[Car] ID: " + vehicleID + " | Seats: " + seats +
+            " | ₹" + costPerDay + "/day | Available: " + (available ? "Yes" : "No"));
     }
 }
+
+class Bike extends Vehicle {
+    public Bike(String id, int s, double cost) {
+        super(id, "Bike", s, cost);
+    }
+
+    public void display() {
+        System.out.println("[Bike] ID: " + vehicleID + " | Seats: " + seats +
+            " | ₹" + costPerDay + "/day | Available: " + (available ? "Yes" : "No"));
+    }
+}
+
 class Truck extends Vehicle {
-    private static final long serialVersionUID = 1L;
-    private double loadCapacity;
-    
-    public Truck(String id, String make, String model, double basePricePerDay, double load) { 
-        super(id, make, model, basePricePerDay); 
-        this.loadCapacity = load; 
+    public Truck(String id, int s, double cost) {
+        super(id, "Truck", s, cost);
     }
-    
-    public double getLoadCapacity() {
-        return loadCapacity;
-    }
-    
-    @Override 
-    public double calculatePrice(int days) { 
-        // Higher load capacity means higher price
-        double loadFactor = 1.0 + (loadCapacity / 100.0);
-        return days * getBasePricePerDay() * loadFactor; 
-    }
-    
-    @Override
-    public String toString() {
-        return super.toString() + String.format(" - %.1f ton capacity", loadCapacity);
+
+    public void display() {
+        System.out.println("[Truck] ID: " + vehicleID + " | Seats: " + seats +
+            " | ₹" + costPerDay + "/day | Available: " + (available ? "Yes" : "No"));
     }
 }
 
-class Customer implements Serializable {
-    private static final long serialVersionUID = 1L;
-    private String id;
-    private String name;
-    private String passwordHash;
-    private double loanBalance = 0;
-    private List<Rental> history = new ArrayList<>();
+// ---------------- Rental Record ----------------
+class RentalRecord {
+    String vehicleID;
+    String vehicleType;
+    LocalDateTime rentTime;
+    int duration;
+    double totalCost;
 
-    public Customer(String id, String name, String password) {
-        this.id = id;
-        this.name = name;
-        this.passwordHash = hash(password);
+    public RentalRecord(String id, String type, LocalDateTime time, int days, double cost) {
+        this.vehicleID = id;
+        this.vehicleType = type;
+        this.rentTime = time;
+        this.duration = days;
+        this.totalCost = cost;
     }
-    public String getId(){ return id;} public String getName(){ return name; }
-    public boolean authenticate(String pass){ return passwordHash.equals(hash(pass)); }
-    public double getLoanBalance(){ return loanBalance; }
-    public void requestLoan(double amount){ loanBalance += amount; }
-    public void transferLoanTo(Customer other, double amount){
-        if(amount>loanBalance) throw new IllegalArgumentException("Insufficient loan to transfer");
-        loanBalance -= amount;
-        other.loanBalance += amount;
+
+    public void display() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+        System.out.println("Vehicle: " + vehicleType + " [" + vehicleID + "]"
+                + " | Days: " + duration
+                + " | Total Cost: ₹" + totalCost
+                + " | Rented on: " + rentTime.format(formatter));
     }
-    public void addHistory(Rental r){ history.add(r); }
-    public List<Rental> getHistory(){ return history; }
-    private String hash(String input){
-        try{ MessageDigest md=MessageDigest.getInstance("SHA-256"); byte[] dig=md.digest(input.getBytes()); StringBuilder sb=new StringBuilder(); for(byte b:dig) sb.append(String.format("%02x",b)); return sb.toString();
-        }catch(NoSuchAlgorithmException e){ throw new RuntimeException(e);} }
 }
 
-class Rental implements Serializable {
-    private static final long serialVersionUID = 1L;
-    private Vehicle vehicle;
-    private Customer customer;
-    private int days;
-    private double total;
-    private Date date;
-    public Rental(Vehicle v, Customer c, int d){ vehicle=v; customer=c; days=d; total=v.calculatePrice(d); date=new Date(); }
-    public void process(){ vehicle.rentOut(); customer.addHistory(this); Log.LOGGER.info("Processed " + this); }
-    public void close(){ vehicle.returned(); Log.LOGGER.info("Closed " + this); }
-    public Date getDate(){ return date; }
-    public String toString(){ return String.format("%s rented by %s for %d days: ₹%.2f on %s", vehicle.getId(), customer.getName(), days, total, date); }
-}
+// ---------------- User Class ----------------
+class User {
+    private String username;
+    private String password;
+    private List<RentalRecord> history = new ArrayList<>();
 
-// ===== Utilities =====
-class Log { public static final Logger LOGGER=Logger.getLogger("Rentals"); static { LOGGER.setLevel(Level.INFO); ConsoleHandler h=new ConsoleHandler(); h.setLevel(Level.INFO); LOGGER.addHandler(h);} }
+    public User(String u, String p) {
+        this.username = u;
+        this.password = p;
+    }
 
-class Persistence {
-    public static void save(Object o, String file) throws IOException{ try(ObjectOutputStream out=new ObjectOutputStream(new FileOutputStream(file))){out.writeObject(o);} }
-    @SuppressWarnings("unchecked")
-    public static <T> T load(String file) throws IOException,ClassNotFoundException{ try(ObjectInputStream in=new ObjectInputStream(new FileInputStream(file))){return (T)in.readObject();} }
-}
+    public String getUsername() {
+        return username;
+    }
 
-// ===== Exception Types =====
-class AuthenticationException extends Exception { public AuthenticationException(String m){ super(m);} }
-class EntityNotFoundException extends Exception { public EntityNotFoundException(String m){ super(m);} }
+    public boolean validate(String u, String p) {
+        return this.username.equals(u) && this.password.equals(p);
+    }
 
-// ===== Application Logic =====
-public class EnhancedCarRentalApp {
-    private Map<String, Vehicle> vehicles = new HashMap<>();
-    private Map<String, Customer> customers = new HashMap<>();
-    private Scanner sc = new Scanner(System.in);
-    
-    private void seed(){ vehicles.put("C1",new Car("C1","Honda","Civic",2000,5)); vehicles.put("T1",new Truck("T1","Volvo","VNL",5000,10)); }
-    
-    // Add this utility class for terminal formatting
-    class TerminalUI {
-        // ANSI color codes
-        public static final String RESET = "\u001B[0m";
-        public static final String GREEN = "\u001B[32m";
-        public static final String YELLOW = "\u001B[33m";
-        public static final String BLUE = "\u001B[34m";
-        public static final String PURPLE = "\u001B[35m";
-        public static final String RED = "\u001B[31m";
-        
-        public static void printHeader(String text) {
-            System.out.println("\n" + BLUE + "===== " + text + " =====" + RESET);
+    public void addHistory(RentalRecord record) {
+        history.add(record);
+    }
+
+    public void showHistory() {
+        if (history.isEmpty()) {
+            System.out.println("No rental history found.");
+            return;
         }
-        
-        public static void printSuccess(String text) {
-            System.out.println(GREEN + "✓ " + text + RESET);
-        }
-        
-        public static void printInfo(String text) {
-            System.out.println(YELLOW + "ℹ " + text + RESET);
+        for (RentalRecord r : history) {
+            r.display();
         }
     }
-    
-    private void mainMenu() {
-        while(true) {
-            TerminalUI.printHeader("CAR RENTAL SYSTEM");
-            System.out.println("1) " + TerminalUI.YELLOW + "Login" + TerminalUI.RESET);
-            System.out.println("2) " + TerminalUI.GREEN + "Register" + TerminalUI.RESET);
-            System.out.println("3) " + TerminalUI.PURPLE + "Exit" + TerminalUI.RESET);
-            int ch = readInt(1, 3);
-            try {
-                switch(ch) {
-                    case 1: login(); break;
-                    case 2: register(); break;
-                    default: cleanup(); return;
+}
+
+// ---------------- Main App Class ----------------
+public class AutoRentPro {
+    static List<Vehicle> vehicles = new ArrayList<>();
+    static List<User> users = new ArrayList<>();
+    static User currentUser = null;
+    static Scanner sc = new Scanner(System.in);
+
+    static void seedVehicles() {
+        vehicles.add(new Car("CAR001", 4, 1500));
+        vehicles.add(new Car("CAR002", 5, 1800));
+        vehicles.add(new Bike("BIKE001", 2, 500));
+        vehicles.add(new Bike("BIKE002", 1, 300));
+        vehicles.add(new Truck("TRUCK001", 2, 3000));
+        vehicles.add(new Truck("TRUCK002", 3, 3500));
+    }
+
+    static Vehicle findVehicleByID(String id) {
+        for (Vehicle v : vehicles) {
+            if (v.getID().equals(id)) return v;
+        }
+        return null;
+    }
+
+    static void rentVehicle() {
+        System.out.println("\nAvailable Vehicles:");
+        for (Vehicle v : vehicles) {
+            if (v.isAvailable()) v.display();
+        }
+
+        System.out.print("\nEnter Vehicle ID to rent: ");
+        String id = sc.next();
+
+        Vehicle v = findVehicleByID(id);
+        if (v == null || !v.isAvailable()) {
+            System.out.println("Invalid or unavailable vehicle!");
+            return;
+        }
+
+        System.out.print("Enter number of days to rent: ");
+        int days = sc.nextInt();
+
+        double cost = v.calculateCost(days);
+        LocalDateTime now = LocalDateTime.now();
+
+        RentalRecord record = new RentalRecord(v.getID(), v.getType(), now, days, cost);
+        currentUser.addHistory(record);
+        v.setAvailability(false);
+
+        System.out.println("Vehicle rented successfully! Total cost: ₹" + cost);
+    }
+
+    static void returnVehicle() {
+        System.out.print("Enter Vehicle ID to return: ");
+        String id = sc.next();
+
+        Vehicle v = findVehicleByID(id);
+        if (v == null || v.isAvailable()) {
+            System.out.println("This vehicle is not currently rented.");
+            return;
+        }
+
+        v.setAvailability(true);
+        System.out.println("Vehicle returned successfully.");
+    }
+
+    static void userMenu() {
+        int choice;
+        do {
+            System.out.println("\n=== User Menu ===");
+            System.out.println("1. Rent Vehicle");
+            System.out.println("2. Return Vehicle");
+            System.out.println("3. Show Rental History");
+            System.out.println("4. Delete My Account");
+            System.out.println("5. Logout");
+            System.out.print("Enter choice: ");
+            choice = sc.nextInt();
+
+            switch (choice) {
+                case 1 -> rentVehicle();
+                case 2 -> returnVehicle();
+                case 3 -> currentUser.showHistory();
+                case 4 -> {
+                    users.removeIf(u -> u.getUsername().equals(currentUser.getUsername()));
+                    currentUser = null;
+                    System.out.println("Account deleted.");
+                    return;
                 }
-            } catch(Exception e) {
-                System.out.println(TerminalUI.YELLOW + "⚠ " + e.getMessage() + TerminalUI.RESET);
+                case 5 -> {
+                    currentUser = null;
+                    System.out.println("Logged out.");
+                }
+                default -> System.out.println("Invalid choice.");
+            }
+        } while (currentUser != null);
+    }
+
+    static void registerUser() {
+        System.out.print("Enter new username: ");
+        String u = sc.next();
+        System.out.print("Enter password: ");
+        String p = sc.next();
+
+        for (User user : users) {
+            if (user.getUsername().equals(u)) {
+                System.out.println("Username already exists!");
+                return;
             }
         }
+        users.add(new User(u, p));
+        System.out.println("Registration successful!");
     }
-    private void login() throws Exception {
-        System.out.print("UserID: "); String uid=sc.next();
-        Customer c=customers.get(uid);
-        if(c==null) throw new AuthenticationException("User not found");
-        System.out.print("Password: "); String pw=sc.next();
-        if(!c.authenticate(pw)) throw new AuthenticationException("Invalid creds");
-        userMenu(c);
-    }
-    private void register(){ System.out.print("ID: "); String id=sc.next(); System.out.print("Name: "); String nm=sc.next(); System.out.print("Password: "); String pw=sc.next();
-        customers.put(id,new Customer(id,nm,pw)); System.out.println("Registered."); }
-    private void userMenu(Customer c) throws Exception {
-        while(true) {
-            TerminalUI.printHeader("USER MENU: " + c.getName());
-            System.out.println("1) " + TerminalUI.BLUE + "Rent Vehicle" + TerminalUI.RESET);
-            System.out.println("2) " + TerminalUI.GREEN + "Return Vehicle" + TerminalUI.RESET);
-            System.out.println("3) " + TerminalUI.YELLOW + "Request Loan" + TerminalUI.RESET);
-            System.out.println("4) " + TerminalUI.YELLOW + "Transfer Loan" + TerminalUI.RESET);
-            System.out.println("5) " + TerminalUI.PURPLE + "Show History" + TerminalUI.RESET);
-            System.out.println("6) " + TerminalUI.PURPLE + "Sort History" + TerminalUI.RESET);
-            System.out.println("7) " + TerminalUI.RED + "Delete Account" + TerminalUI.RESET);
-            System.out.println("8) " + TerminalUI.BLUE + "Logout" + TerminalUI.RESET);
-            int ch=readInt(1,8);
-            switch(ch){ case 1: rentFlow(c); break; case 2: returnFlow(c); break;
-                case 3: loanFlow(c); break; case 4: transferFlow(c); break;
-                case 5: showHistory(c); break; case 6: sortHistory(c); break;
-                case 7: deleteAccount(c); return; default: return;
+
+    static void loginUser() {
+        System.out.print("Username: ");
+        String u = sc.next();
+        System.out.print("Password: ");
+        String p = sc.next();
+
+        for (User user : users) {
+            if (user.validate(u, p)) {
+                currentUser = user;
+                System.out.println("Login successful!");
+                userMenu();
+                return;
             }
         }
+        System.out.println("Invalid credentials!");
     }
-    private void rentFlow(Customer c) throws Exception {
-        listVehicles(); System.out.print("VehicleID: "); String vid=sc.next(); Vehicle v=vehicles.get(vid);
-        if(v==null||!v.isAvailable()) throw new EntityNotFoundException("Vehicle unavailable");
-        System.out.print("Days: "); int d=readInt(1,365);
-        Rental r=new Rental(v,c,d); r.process();
+
+    public static void main(String[] args) {
+        seedVehicles();
+        int choice;
+        do {
+            System.out.println("\n===== AutoRent Pro =====");
+            System.out.println("1. Login");
+            System.out.println("2. Register");
+            System.out.println("3. Exit");
+            System.out.print("Enter choice: ");
+            choice = sc.nextInt();
+
+            switch (choice) {
+                case 1 -> loginUser();
+                case 2 -> registerUser();
+                case 3 -> System.out.println("Goodbye!");
+                default -> System.out.println("Invalid option!");
+            }
+        } while (choice != 3);
     }
-    private void returnFlow(Customer c) {
-        // return last
-        List<Rental> h=c.getHistory(); if(h.isEmpty()){System.out.println("No rentals"); return;} Rental r=h.get(h.size()-1);
-        r.close();
-    }
-    private void loanFlow(Customer c){ System.out.print("Amount: "); double amt=readDouble(0.01,1e6);
-        c.requestLoan(amt); System.out.println("Loan new balance: ₹"+c.getLoanBalance()); }
-    private void transferFlow(Customer c){ System.out.print("TargetID: "); String tid=sc.next(); Customer o=customers.get(tid);
-        if(o==null) System.out.println("Not found"); else{ System.out.print("Amt: "); double a=readDouble(0.01,c.getLoanBalance()); c.transferLoanTo(o,a); System.out.println("Done."); }}
-    private void showHistory(Customer c){ c.getHistory().forEach(System.out::println); }
-    private void sortHistory(Customer c){ c.getHistory().sort(Comparator.comparing(Rental::getDate)); System.out.println("Sorted."); }
-    private void deleteAccount(Customer c){ customers.remove(c.getId()); System.out.println("Deleted account."); }
-    private void listVehicles(){ vehicles.values().forEach(System.out::println); }
-    private int readInt(int lo, int hi) { 
-        int x; 
-        while(true) { 
-            try { 
-                x = Integer.parseInt(sc.next()); 
-                if(x >= lo && x <= hi) return x; 
-            } catch(Exception e) { } 
-            System.out.print("Invalid, retry: "); 
-        } 
-    }
-    private double readDouble(double lo, double hi) { 
-        double x; 
-        while(true) { 
-            try { 
-                x = Double.parseDouble(sc.next()); 
-                if(x >= lo && x <= hi) return x; 
-            } catch(Exception e) { } 
-            System.out.print("Invalid, retry: "); 
-        } 
-    }
-    private void cleanup(){ sc.close(); try{ Persistence.save(vehicles,"veh.dat"); Persistence.save(customers,"cus.dat"); }catch(Exception e){} System.out.println("Exiting."); }
-    public static void main(String[] args){ EnhancedCarRentalApp app=new EnhancedCarRentalApp(); app.seed(); app.mainMenu(); }
 }
