@@ -159,9 +159,46 @@ public class EnhancedCarRentalApp {
     
     private void seed(){ vehicles.put("C1",new Car("C1","Honda","Civic",2000,5)); vehicles.put("T1",new Truck("T1","Volvo","VNL",5000,10)); }
     
+    // Add this utility class for terminal formatting
+    class TerminalUI {
+        // ANSI color codes
+        public static final String RESET = "\u001B[0m";
+        public static final String GREEN = "\u001B[32m";
+        public static final String YELLOW = "\u001B[33m";
+        public static final String BLUE = "\u001B[34m";
+        public static final String PURPLE = "\u001B[35m";
+        public static final String RED = "\u001B[31m";
+        
+        public static void printHeader(String text) {
+            System.out.println("\n" + BLUE + "===== " + text + " =====" + RESET);
+        }
+        
+        public static void printSuccess(String text) {
+            System.out.println(GREEN + "✓ " + text + RESET);
+        }
+        
+        public static void printInfo(String text) {
+            System.out.println(YELLOW + "ℹ " + text + RESET);
+        }
+    }
+    
     private void mainMenu() {
-        while(true){ System.out.println("1) Login 2) Register 3) Exit"); int ch=readInt(1,3);
-            try{ switch(ch){ case 1: login(); break; case 2: register(); break; default: cleanup(); return;} } catch(Exception e){ System.out.println(e.getMessage()); } }
+        while(true) {
+            TerminalUI.printHeader("CAR RENTAL SYSTEM");
+            System.out.println("1) " + TerminalUI.YELLOW + "Login" + TerminalUI.RESET);
+            System.out.println("2) " + TerminalUI.GREEN + "Register" + TerminalUI.RESET);
+            System.out.println("3) " + TerminalUI.PURPLE + "Exit" + TerminalUI.RESET);
+            int ch = readInt(1, 3);
+            try {
+                switch(ch) {
+                    case 1: login(); break;
+                    case 2: register(); break;
+                    default: cleanup(); return;
+                }
+            } catch(Exception e) {
+                System.out.println(TerminalUI.YELLOW + "⚠ " + e.getMessage() + TerminalUI.RESET);
+            }
+        }
     }
     private void login() throws Exception {
         System.out.print("UserID: "); String uid=sc.next();
@@ -174,7 +211,16 @@ public class EnhancedCarRentalApp {
     private void register(){ System.out.print("ID: "); String id=sc.next(); System.out.print("Name: "); String nm=sc.next(); System.out.print("Password: "); String pw=sc.next();
         customers.put(id,new Customer(id,nm,pw)); System.out.println("Registered."); }
     private void userMenu(Customer c) throws Exception {
-        while(true){ System.out.println("\n1) Rent 2) Return 3) RequestLoan 4) TransferLoan 5) ShowHistory 6) SortHistory 7) DeleteAccount 8) Logout");
+        while(true) {
+            TerminalUI.printHeader("USER MENU: " + c.getName());
+            System.out.println("1) " + TerminalUI.BLUE + "Rent Vehicle" + TerminalUI.RESET);
+            System.out.println("2) " + TerminalUI.GREEN + "Return Vehicle" + TerminalUI.RESET);
+            System.out.println("3) " + TerminalUI.YELLOW + "Request Loan" + TerminalUI.RESET);
+            System.out.println("4) " + TerminalUI.YELLOW + "Transfer Loan" + TerminalUI.RESET);
+            System.out.println("5) " + TerminalUI.PURPLE + "Show History" + TerminalUI.RESET);
+            System.out.println("6) " + TerminalUI.PURPLE + "Sort History" + TerminalUI.RESET);
+            System.out.println("7) " + TerminalUI.RED + "Delete Account" + TerminalUI.RESET);
+            System.out.println("8) " + TerminalUI.BLUE + "Logout" + TerminalUI.RESET);
             int ch=readInt(1,8);
             switch(ch){ case 1: rentFlow(c); break; case 2: returnFlow(c); break;
                 case 3: loanFlow(c); break; case 4: transferFlow(c); break;
