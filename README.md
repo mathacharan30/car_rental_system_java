@@ -15,7 +15,6 @@
    * [User Menu Options](#user-menu-options)
 5. [Design & Technical Highlights](#design--technical-highlights)
 6. [Persistence & Cleanup](#persistence--cleanup)
-7. [License](#license)
 
 ---
 
